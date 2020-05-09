@@ -4,6 +4,9 @@ import logging
 import time
 import pygame
 from PIL import Image
+import cv2 as cv
+import numpy as np
+import base64
 
 from aiortc import RTCIceCandidate, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.signaling import BYE, add_signaling_arguments, create_signaling
@@ -50,19 +53,35 @@ async def run_answer(pc, signaling):
         @channel.on("message")
         def on_message(message):
             channel_log(channel, "<", message)
-    
-            rec_image = Image.frombytes('RGBA', (700, 500), message)
+
+            # image message data in bytes to PIL image
+            pil_image = Image.frombytes('RGB', (700, 500), message)
             
-            # converting raw bytes to a PIL image
-            py_img = pygame.image.fromstring(rec_image.tobytes(), (700,500), 'RGBA')
+            # converting PIL image to pygame image - to display on surface 
+            pygame_img = pygame.image.fromstring(pil_image.tobytes(), (700,500), 'RGB')
             
             # copying the image surface object 
             # to the display surface object at 
             # (0, 0) coordinate.  
-            screen.blit(py_img, (0,0))
-            
+            screen.blit(pygame_img, (0,0))
             # displaying the image on a pygame screen 
             pygame.display.update()
+            
+            # converting pygame surface to a 3d array
+            pygame_surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
+            
+            # Transpose image - swap width with height.
+            #  PyGame uses (X,Y) but CV2 use (Y,X) like matrix 
+            # in math (other words (row, column))
+            cv_image = cv.transpose(pygame_surface_array)
+            
+            # onvert from RGB (used in PyGame) to BGR (used in CV2)
+            cv_image = cv.cvtColor(cv_image, cv.COLOR_RGB2BGR)
+            
+            # displaying the image
+            cv.imshow('Color', cv_image)
+            cv.waitKey(0)
+            cv.destroyAllWindows()
             
             channel_send(channel, "pong")
 

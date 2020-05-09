@@ -70,7 +70,6 @@ def channel_send(channel, message):
     channel_log(channel, ">", message)
     channel.send(message)
 
-{"sdp": "v=0\r\no=- 3798035874 3798035874 IN IP4 0.0.0.0\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\na=msid-semantic:WMS *\r\nm=application 51529 DTLS/SCTP 5000\r\nc=IN IP4 192.168.1.13\r\na=mid:0\r\na=sctpmap:5000 webrtc-datachannel 65535\r\na=max-message-size:65536\r\na=candidate:d27094500494667636f3d2a47dc259db 1 udp 2130706431 192.168.1.13 51529 typ host\r\na=candidate:ab44e0e64d150378a4d5ed3100dc7394 1 udp 1694498815 174.55.165.41 51529 typ srflx raddr 192.168.1.13 rport 51529\r\na=end-of-candidates\r\na=ice-ufrag:p2n4\r\na=ice-pwd:doJsGyaVBlzwh4xd7ep8h7\r\na=fingerprint:sha-256 B5:43:0C:E4:5A:1E:F9:BD:0B:1E:C3:26:54:BD:B5:0E:90:3A:03:08:20:B2:DB:DC:ED:AE:30:C8:D8:49:F7:DE\r\na=setup:active\r\n", "type": "answer"}
 async def consume_signaling(pc, signaling):
     while True:
         obj = await signaling.receive()
@@ -137,17 +136,14 @@ def generate_bouncing_ball():
         # ball_image_surface = pygame.display.get_surface()
         image_data_lock.acquire()
         global image_data 
-        image_data = pygame.image.tostring(screen, 'RGBA') 
+        image_data = pygame.image.tostring(screen, 'RGB') 
         
         image_data_lock.release()
-
-        # fname = "ball_images/ball.png"
-        # pygame.image.save(screen, fname)
 
 async def run_offer(pc, signaling):
     await signaling.connect()
 
-    channel = pc.createDataChannel("chat") # ------------- instead of creating datachanel, send video 
+    channel = pc.createDataChannel("chat") 
     channel_log(channel, "-", "created by local party")
     
     # generating a bouncing ball
@@ -170,10 +166,6 @@ async def run_offer(pc, signaling):
     @channel.on("message")
     def on_message(message):
         channel_log(channel, "<", message)
-
-        # if isinstance(message, str) and message.startswith("pong"):
-        #     elapsed_ms = (current_stamp() - int(message[5:])) / 1000
-        #     print(" RTT %.2f ms" % elapsed_ms)
 
     # send offer
     await pc.setLocalDescription(await pc.createOffer())
