@@ -2,12 +2,15 @@ import argparse
 import asyncio
 import logging
 import time
+import pygame
+from PIL import Image
 
 from aiortc import RTCIceCandidate, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.signaling import BYE, add_signaling_arguments, create_signaling
 
 def channel_log(channel, t, message):
-    print("channel(%s) %s %s" % (channel.label, t, message))
+    #print("channel(%s) %s %s" % (channel.label, t, message))
+    print("recoeved from server")
 
 def channel_send(channel, message):
     channel_log(channel, ">", message)
@@ -15,6 +18,7 @@ def channel_send(channel, message):
 
 async def consume_signaling(pc, signaling):
     while True:
+
         obj = await signaling.receive()
 
         if isinstance(obj, RTCSessionDescription):
@@ -34,6 +38,11 @@ time_start = None
 
 async def run_answer(pc, signaling):
     await signaling.connect()
+    # pygame.init()
+    # pygame.display.set_caption('loaded image')
+    
+    # screen = pygame.display.set_mode((700, 500))
+
 
     @pc.on("datachannel")
     def on_datachannel(channel):
@@ -43,11 +52,16 @@ async def run_answer(pc, signaling):
         def on_message(message):
             channel_log(channel, "<", message)
 
+            rec_image = Image.frombytes('RGBA', (700, 500), message)
+            # fname = "ball_images/ball.png"
+            # pygame.image.save(rec_image, fname)
+            rec_image.show()
+
             #if isinstance(message, str) and message.startswith("ping"):
-            if isinstance(message, str):
+            # if isinstance(message:
                 # reply
                 #channel_send(channel, "pong" + message[4:])
-                channel_send(channel, "pong")
+            channel_send(channel, "pong")
 
     await consume_signaling(pc, signaling)
 
