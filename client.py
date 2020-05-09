@@ -9,7 +9,6 @@ from aiortc import RTCIceCandidate, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.signaling import BYE, add_signaling_arguments, create_signaling
 
 def channel_log(channel, t, message):
-    #print("channel(%s) %s %s" % (channel.label, t, message))
     print("recoeved from server")
 
 def channel_send(channel, message):
@@ -38,10 +37,10 @@ time_start = None
 
 async def run_answer(pc, signaling):
     await signaling.connect()
-    # pygame.init()
-    # pygame.display.set_caption('loaded image')
+    pygame.init()
+    pygame.display.set_caption('loaded image')
     
-    # screen = pygame.display.set_mode((700, 500))
+    screen = pygame.display.set_mode((700, 500))
 
 
     @pc.on("datachannel")
@@ -51,16 +50,20 @@ async def run_answer(pc, signaling):
         @channel.on("message")
         def on_message(message):
             channel_log(channel, "<", message)
-
+    
             rec_image = Image.frombytes('RGBA', (700, 500), message)
-            # fname = "ball_images/ball.png"
-            # pygame.image.save(rec_image, fname)
-            rec_image.show()
-
-            #if isinstance(message, str) and message.startswith("ping"):
-            # if isinstance(message:
-                # reply
-                #channel_send(channel, "pong" + message[4:])
+            
+            # converting raw bytes to a PIL image
+            py_img = pygame.image.fromstring(rec_image.tobytes(), (700,500), 'RGBA')
+            
+            # copying the image surface object 
+            # to the display surface object at 
+            # (0, 0) coordinate.  
+            screen.blit(py_img, (0,0))
+            
+            # displaying the image on a pygame screen 
+            pygame.display.update()
+            
             channel_send(channel, "pong")
 
     await consume_signaling(pc, signaling)

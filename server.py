@@ -138,10 +138,7 @@ def generate_bouncing_ball():
         image_data_lock.acquire()
         global image_data 
         image_data = pygame.image.tostring(screen, 'RGBA') 
-        # img = Image.frombytes('RGBA',(), image_data)
-        # zdata = StringIO()
-        # img.save(zdata, "JPEG")
-        # image_data = zdata.getvalue()
+        
         image_data_lock.release()
 
         # fname = "ball_images/ball.png"
