@@ -13,10 +13,15 @@ import threading
 from aiortc import RTCIceCandidate, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.signaling import BYE, add_signaling_arguments, create_signaling
 
+import os, sys
+
+# set SDL to use the dummy NULL video driver, 
+#   so it doesn't need a windowing system.
+os.environ["SDL_VIDEODRIVER"] = "dummy"
+
 def channel_log(channel, t, message):
-    #print("recoeved from server")
-    #print("channel(%s) %s %s" % (channel.label, t, message))
-    print("ok")
+    print("recieved image data from server")
+
 def channel_send(channel, message):
     channel_log(channel, ">", message)
     channel.send(message)
@@ -47,7 +52,7 @@ async def run_answer(pc, signaling):
     #pygame.display.set_caption('loaded image')
     
     screen = pygame.display.set_mode((700, 500))
-
+    pygame.display.iconify()
 
     @pc.on("datachannel")
     def on_datachannel(channel):
@@ -79,26 +84,25 @@ async def run_answer(pc, signaling):
 
             # convert from RGB (used in PyGame) to BGR (used in CV2)
             cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
+            #while True:
+            cv2.imshow("Disaplaying server generated image from client", cv_image)
+            cv2.waitKey(1)
+            #cv2.destroyAllWindows()
+
             ball_x_coordinate = Value('i', 0)
             ball_y_coordinate = Value('i', 0)
             image_processing_thread = Process(target = image_processing, 
                                                 args=(cv_image,ball_x_coordinate, ball_y_coordinate) )
             image_processing_thread.start()
-            image_processing_thread.join()
-        
-            print("x coordinate value")
-            print(ball_x_coordinate.value)
-            print("y coordintae value")
-            print(ball_y_coordinate.value)
             
             channel_send(channel, str(ball_x_coordinate.value)+","+str(ball_y_coordinate.value))   
+            #image_processing_thread.join()
 
     await consume_signaling(pc, signaling)
 
 def image_processing(image_to_be_processed, ball_x_coordinate, ball_y_coordinate):
     
     height, width, depth = image_to_be_processed.shape
-    print (height, width, depth)
     thresh = 132
     imgray = cv2.cvtColor(image_to_be_processed,cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(imgray,(5,5),0)
@@ -113,18 +117,13 @@ def image_processing(image_to_be_processed, ball_x_coordinate, ball_y_coordinate
     y = int(M['m01']/M['m00'])
     
     ball_x_coordinate.value = x
-    ball_y_coordinate.value = y
-    print("printing x and y")
-    print(x,y) 
-    # print(width/2.0,height/2.0) 
-    # print(width/2-x,height/2-y) 
+    ball_y_coordinate.value = y 
 
     cv2.circle(image_to_be_processed,(x,y),1,(0,0,255),2)
     cv2.putText(image_to_be_processed,"center of Circle contour", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255))
     cv2.circle(image_to_be_processed,(int(width/2),int(height/2)),1,(255,0,0),2)
-    # cv2.putText(image_to_be_processed,"center of image", (int(width/2),int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
-    cv2.imshow('contour',image_to_be_processed)
-    cv2.waitKey(500)
+    # cv2.imshow('image on client',image_to_be_processed)
+    # cv2.waitKey(0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Data channels ping/pong")
