@@ -91,7 +91,7 @@ async def run_answer(pc, signaling):
             print("y coordintae value")
             print(ball_y_coordinate.value)
             
-            channel_send(channel, str((ball_x_coordinate.value, ball_y_coordinate.value)))   
+            channel_send(channel, str(ball_x_coordinate.value)+","+str(ball_y_coordinate.value))   
 
     await consume_signaling(pc, signaling)
 
@@ -124,7 +124,7 @@ def image_processing(image_to_be_processed, ball_x_coordinate, ball_y_coordinate
     cv2.circle(image_to_be_processed,(int(width/2),int(height/2)),1,(255,0,0),2)
     # cv2.putText(image_to_be_processed,"center of image", (int(width/2),int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
     cv2.imshow('contour',image_to_be_processed)
-    cv2.waitKey(0)
+    cv2.waitKey(500)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Data channels ping/pong")
