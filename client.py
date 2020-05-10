@@ -4,10 +4,11 @@ import logging
 import time
 import pygame
 from PIL import Image
-import cv2 as cv
+import cv2 
 import numpy as np
 import base64
 
+from multiprocessing import Process
 from aiortc import RTCIceCandidate, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.signaling import BYE, add_signaling_arguments, create_signaling
 
@@ -41,7 +42,7 @@ time_start = None
 async def run_answer(pc, signaling):
     await signaling.connect()
     pygame.init()
-    pygame.display.set_caption('loaded image')
+    #pygame.display.set_caption('loaded image')
     
     screen = pygame.display.set_mode((700, 500))
 
@@ -65,7 +66,7 @@ async def run_answer(pc, signaling):
             # (0, 0) coordinate.  
             screen.blit(pygame_img, (0,0))
             # displaying the image on a pygame screen 
-            pygame.display.update()
+            #pygame.display.update()
             
             # converting pygame surface to a 3d array
             pygame_surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
@@ -73,21 +74,54 @@ async def run_answer(pc, signaling):
             # Transpose image - swap width with height.
             #  PyGame uses (X,Y) but CV2 use (Y,X) like matrix 
             # in math (other words (row, column))
-            cv_image = cv.transpose(pygame_surface_array)
+            cv_image = cv2.transpose(pygame_surface_array)
             
             # onvert from RGB (used in PyGame) to BGR (used in CV2)
-            cv_image = cv.cvtColor(cv_image, cv.COLOR_RGB2BGR)
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
             
-            # displaying the image
-            cv.imshow('Color', cv_image)
-            cv.waitKey(0)
-            cv.destroyAllWindows()
+            image_processing_thread = Process(target = image_processing, 
+                                                args=(cv_image,) )
+            image_processing_thread.start()
+            image_processing_thread.join()
             
             channel_send(channel, "pong")
 
     await consume_signaling(pc, signaling)
 
+def image_processing(image_to_be_processed):
+    # cv.imshow("rec img", image_to_be_processed)
+    # cv.waitKey(500)
+    # cv.destroyAllWindows()
 
+    #image = cv.imread(image_to_be_processed, cv.IMREAD_GRAYSCALE)
+    
+    # im = cv2.imread('sun0016.bmp')
+    height, width, depth = image_to_be_processed.shape
+    print (height, width, depth)
+    thresh = 132
+    imgray = cv2.cvtColor(image_to_be_processed,cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(imgray,(5,5),0)
+    edges = cv2.Canny(blur,thresh,thresh*2)
+    contours, hierarchy = cv2.findContours(edges,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    cnt = contours[0]
+    cv2.drawContours(image_to_be_processed,contours,-1,(0,255,0),-1)
+
+    #centroid_x = M10/M00 and centroid_y = M01/M00
+    M = cv2.moments(cnt)
+    x = int(M['m10']/M['m00'])
+    y = int(M['m01']/M['m00'])
+    print("printing x and y")
+    print(x,y) 
+    # print(width/2.0,height/2.0) 
+    # print(width/2-x,height/2-y) 
+
+
+    cv2.circle(image_to_be_processed,(x,y),1,(0,0,255),2)
+    cv2.putText(image_to_be_processed,"center of Sun contour", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255))
+    cv2.circle(image_to_be_processed,(int(width/2),int(height/2)),1,(255,0,0),2)
+    cv2.putText(image_to_be_processed,"center of image", (int(width/2),int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
+    cv2.imshow('contour',image_to_be_processed)
+    cv2.waitKey(0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Data channels ping/pong")
