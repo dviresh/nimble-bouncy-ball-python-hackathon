@@ -6,15 +6,17 @@ import pygame
 from PIL import Image
 import cv2 
 import numpy as np
-import base64
 
-from multiprocessing import Process
+from multiprocessing import Process, Value, Lock
+import threading
+
 from aiortc import RTCIceCandidate, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.signaling import BYE, add_signaling_arguments, create_signaling
 
 def channel_log(channel, t, message):
-    print("recoeved from server")
-
+    #print("recoeved from server")
+    #print("channel(%s) %s %s" % (channel.label, t, message))
+    print("ok")
 def channel_send(channel, message):
     channel_log(channel, ">", message)
     channel.send(message)
@@ -53,7 +55,7 @@ async def run_answer(pc, signaling):
 
         @channel.on("message")
         def on_message(message):
-            channel_log(channel, "<", message)
+            # channel_log(channel, "<", message)
 
             # image message data in bytes to PIL image
             pil_image = Image.frombytes('RGB', (700, 500), message)
@@ -72,30 +74,29 @@ async def run_answer(pc, signaling):
             pygame_surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
             
             # Transpose image - swap width with height.
-            #  PyGame uses (X,Y) but CV2 use (Y,X) like matrix 
-            # in math (other words (row, column))
+            #  PyGame uses (X,Y) but CV2 use (Y,X) like matrixLoc
             cv_image = cv2.transpose(pygame_surface_array)
-            
-            # onvert from RGB (used in PyGame) to BGR (used in CV2)
+
+            # convert from RGB (used in PyGame) to BGR (used in CV2)
             cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
-            
+            ball_x_coordinate = Value('i', 0)
+            ball_y_coordinate = Value('i', 0)
             image_processing_thread = Process(target = image_processing, 
-                                                args=(cv_image,) )
+                                                args=(cv_image,ball_x_coordinate, ball_y_coordinate) )
             image_processing_thread.start()
             image_processing_thread.join()
+        
+            print("x coordinate value")
+            print(ball_x_coordinate.value)
+            print("y coordintae value")
+            print(ball_y_coordinate.value)
             
-            channel_send(channel, "pong")
+            channel_send(channel, str((ball_x_coordinate.value, ball_y_coordinate.value)))   
 
     await consume_signaling(pc, signaling)
 
-def image_processing(image_to_be_processed):
-    # cv.imshow("rec img", image_to_be_processed)
-    # cv.waitKey(500)
-    # cv.destroyAllWindows()
-
-    #image = cv.imread(image_to_be_processed, cv.IMREAD_GRAYSCALE)
+def image_processing(image_to_be_processed, ball_x_coordinate, ball_y_coordinate):
     
-    # im = cv2.imread('sun0016.bmp')
     height, width, depth = image_to_be_processed.shape
     print (height, width, depth)
     thresh = 132
@@ -106,20 +107,22 @@ def image_processing(image_to_be_processed):
     cnt = contours[0]
     cv2.drawContours(image_to_be_processed,contours,-1,(0,255,0),-1)
 
-    #centroid_x = M10/M00 and centroid_y = M01/M00
+    # centroid_x = M10/M00 and centroid_y = M01/M00
     M = cv2.moments(cnt)
     x = int(M['m10']/M['m00'])
     y = int(M['m01']/M['m00'])
+    
+    ball_x_coordinate.value = x
+    ball_y_coordinate.value = y
     print("printing x and y")
     print(x,y) 
     # print(width/2.0,height/2.0) 
     # print(width/2-x,height/2-y) 
 
-
     cv2.circle(image_to_be_processed,(x,y),1,(0,0,255),2)
-    cv2.putText(image_to_be_processed,"center of Sun contour", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255))
+    cv2.putText(image_to_be_processed,"center of Circle contour", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255))
     cv2.circle(image_to_be_processed,(int(width/2),int(height/2)),1,(255,0,0),2)
-    cv2.putText(image_to_be_processed,"center of image", (int(width/2),int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
+    # cv2.putText(image_to_be_processed,"center of image", (int(width/2),int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0))
     cv2.imshow('contour',image_to_be_processed)
     cv2.waitKey(0)
 

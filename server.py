@@ -13,6 +13,7 @@ import random
 
 from io import StringIO
 from PIL import Image
+from subprocess import *
 
 # Define some colors
 BLACK = (0, 0, 0)
@@ -62,12 +63,12 @@ def make_ball():
 
 # ---------------------- below section of the code if for server communication -------
 
-def channel_log(channel, t, message):
+# def channel_log(channel, t, message):
+#     print("channel(%s) %s %s" % (channel.label, t, message))
     #print("channel(%s) %s %s" % (channel.label, t, message))
-    print("recieved from client")
-
+    #print("ok")
 def channel_send(channel, message):
-    channel_log(channel, ">", message)
+    #channel_log(channel, ">", message)
     channel.send(message)
 
 async def consume_signaling(pc, signaling):
@@ -144,7 +145,7 @@ async def run_offer(pc, signaling):
     await signaling.connect()
 
     channel = pc.createDataChannel("chat") 
-    channel_log(channel, "-", "created by local party")
+    #channel_log(channel, "-", "created by local party")
     
     # generating a bouncing ball
     gererate_ball_thread = threading.Thread(target= generate_bouncing_ball)
@@ -164,9 +165,10 @@ async def run_offer(pc, signaling):
         asyncio.ensure_future(send_pings())
 
     @channel.on("message")
-    def on_message(message):
-        channel_log(channel, "<", message)
-
+    def on_message(rec_message):
+        #channel_log(channel, "<", rec_message)
+        print("channel(%s) %s" % (channel.label, rec_message))
+        # print("rec message")
     # send offer
     await pc.setLocalDescription(await pc.createOffer())
     await signaling.send(pc.localDescription)
